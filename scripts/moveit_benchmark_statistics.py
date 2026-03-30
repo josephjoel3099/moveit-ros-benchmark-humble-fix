@@ -115,6 +115,16 @@ def readBenchmarkLog(dbname, filenames):
     def isInvalidValue(value):
         return len(value) == 0 or value in ["nan", "-nan", "inf", "-inf"]
 
+    def normalizeLogValue(value):
+        if isInvalidValue(value):
+            return None
+        lower_value = value.lower()
+        if lower_value == "true":
+            return 1
+        if lower_value == "false":
+            return 0
+        return value
+
     conn = sqlite3.connect(dbname)
     c = conn.cursor()
     c.execute("PRAGMA FOREIGN_KEYS = ON")
@@ -315,10 +325,7 @@ def readBenchmarkLog(dbname, filenames):
             numRuns = int(logfile.readline().split()[0])
             runIds = []
             for j in range(numRuns):
-                runValues = [
-                    None if isInvalidValue(x) else x
-                    for x in logfile.readline().split("; ")[:-1]
-                ]
+                runValues = [normalizeLogValue(x) for x in logfile.readline().split("; ")[:-1]]
                 values = tuple([experimentId, plannerId] + runValues)
                 c.execute(insertFmtStr, values)
                 # extract primary key of each run row so we can reference them
@@ -364,10 +371,7 @@ def readBenchmarkLog(dbname, filenames):
                     for dataSample in dataSeries:
                         values = tuple(
                             [runIds[j]]
-                            + [
-                                None if isInvalidValue(x) else x
-                                for x in dataSample.split(",")[:-1]
-                            ]
+                            + [normalizeLogValue(x) for x in dataSample.split(",")[:-1]]
                         )
                         try:
                             c.execute(insertFmtStr, values)
